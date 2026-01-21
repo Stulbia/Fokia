@@ -473,12 +473,10 @@ class Fokia3310App:
 
 
 #KEYBOARD EVENTS PASS HANDLING TO CLICKS
-# this part is vibe coded cuz i respect my time and don't really do so with python
-
+# pYtHon(
 
     def _on_keyboard(self, e: ft.KeyboardEvent):
-        # Flet na Windowsie czasem dodaje spacje lub ma inne nazewnictwo
-        # Standaryzujemy klawisz do porównań
+        # Flet ON Windows ))))
         key = e.key
         k = key.replace(" ", "")  # Usuwa spacje (np. "Arrow Up" -> "ArrowUp")
 
@@ -511,10 +509,9 @@ class Fokia3310App:
             self._handle_call(None)
             return
 
-        # =======================
+
         # Numbers + Numpad + Symbols
-        # =======================
-        # Mapowanie dla Windows (Numpad) oraz klawiszy standardowych
+
         num_map = {
             # Numpad
             "Numpad0": "0", "Numpad1": "1", "Numpad2": "2",
@@ -525,25 +522,23 @@ class Fokia3310App:
             "NumpadDivide": "/",
             "NumpadAdd": "+",
             "NumpadSubtract": "-",
-            # Symbole z Shiftem (często przychodzą jako konkretne znaki)
             "Multiply": "*",
             "Divide": "/",
             "Add": "+",
             "Subtract": "-",
         }
 
-        # 1. Sprawdź mapę numpada
+
         if k in num_map:
             self._handle_key(num_map[k])
             return
 
-        # 2. Sprawdź bezpośrednie cyfry i symbole (* i #)
-        # Na Windows '#' często przychodzi jako '3' z Shiftem lub po prostu '#'
+
         if k in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"]:
             self._handle_key(k)
             return
 
-        # 3. Specjalna obsługa dla '#' (często Shift+3 na niektórych układach)
+
         if e.shift and k == "3":
             self._handle_key("#")
             return
