@@ -22,6 +22,8 @@ class Fokia3310App:
     # page settingg
     def _setup_page(self):
         self.page.title = "Fokia 3310"
+        # LOOK FOR KEYBOARD
+        self.page.on_keyboard_event = self._on_keyboard
         self.page.bgcolor = "#0a0a0a"
         self.page.window.width = 300
         self.page.window.height = 650
@@ -434,6 +436,7 @@ class Fokia3310App:
 
         self.page.update()
 
+
     # ================= INPUT HANDLERS =================
 
     def _handle_ok(self, _):
@@ -468,6 +471,85 @@ class Fokia3310App:
         if self.current_screen == "app" and self.current_app:
             self.current_app.on_key(key)
 
+
+#KEYBOARD EVENTS PASS HANDLING TO CLICKS
+# this part is vibe coded cuz i respect my time and don't really do so with python
+
+
+    def _on_keyboard(self, e: ft.KeyboardEvent):
+        # Flet na Windowsie czasem dodaje spacje lub ma inne nazewnictwo
+        # Standaryzujemy klawisz do porównań
+        key = e.key
+        k = key.replace(" ", "")  # Usuwa spacje (np. "Arrow Up" -> "ArrowUp")
+
+        # =======================
+        # Arrows
+        # =======================
+        if k == "ArrowUp":
+            self._handle_arrow("up")
+            return
+        elif k == "ArrowDown":
+            self._handle_arrow("down")
+            return
+        elif k == "ArrowLeft":
+            self._handle_arrow("left")
+            return
+        elif k == "ArrowRight":
+            self._handle_arrow("right")
+            return
+
+        # =======================
+        # OK / End / Call keys
+        # =======================
+        if k in ["Enter", "NumpadEnter"]:
+            self._handle_ok(None)
+            return
+        elif k == "Escape":
+            self._handle_end(None)
+            return
+        elif k.upper() == "C":
+            self._handle_call(None)
+            return
+
+        # =======================
+        # Numbers + Numpad + Symbols
+        # =======================
+        # Mapowanie dla Windows (Numpad) oraz klawiszy standardowych
+        num_map = {
+            # Numpad
+            "Numpad0": "0", "Numpad1": "1", "Numpad2": "2",
+            "Numpad3": "3", "Numpad4": "4", "Numpad5": "5",
+            "Numpad6": "6", "Numpad7": "7", "Numpad8": "8", "Numpad9": "9",
+            "NumpadDecimal": ".",
+            "NumpadMultiply": "*",
+            "NumpadDivide": "/",
+            "NumpadAdd": "+",
+            "NumpadSubtract": "-",
+            # Symbole z Shiftem (często przychodzą jako konkretne znaki)
+            "Multiply": "*",
+            "Divide": "/",
+            "Add": "+",
+            "Subtract": "-",
+        }
+
+        # 1. Sprawdź mapę numpada
+        if k in num_map:
+            self._handle_key(num_map[k])
+            return
+
+        # 2. Sprawdź bezpośrednie cyfry i symbole (* i #)
+        # Na Windows '#' często przychodzi jako '3' z Shiftem lub po prostu '#'
+        if k in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"]:
+            self._handle_key(k)
+            return
+
+        # 3. Specjalna obsługa dla '#' (często Shift+3 na niektórych układach)
+        if e.shift and k == "3":
+            self._handle_key("#")
+            return
+        elif e.shift and k == "8":
+            self._handle_key("*")
+            return
 
 def main(page: ft.Page):
     Fokia3310App(page)
