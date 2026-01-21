@@ -27,7 +27,7 @@ class T9Dictionary:
             if build_index:
                 self._save_words()
 
-    # ---------- LOAD ----------
+    #  LOAD
 
     def _build_char_map(self):
         m = {}
@@ -46,37 +46,7 @@ class T9Dictionary:
         with open(self.dict_file, "w", encoding="utf-8") as f:
             json.dump(self.words, f, ensure_ascii=False)
 
-    # ---------- TRIE ----------
-
-    # def _build_trie(self):
-    #     self.trie = {}
-    #
-    #     for word in self.words:
-    #         self._insert_word(word.lower())
-
-    # def _insert_word(self, word):
-    #     node = self.trie
-    #     for ch in word:
-    #         key = self.char_to_key.get(ch)
-    #         if not key:
-    #             continue
-    #
-    #         node = node.setdefault(key, {})
-    #         node.setdefault("_", []).append(word)
-    # def _insert_word(self, word):
-    #     node = self.trie
-    #     sequence = ""
-    #
-    #     for ch in word:
-    #         key = self.char_to_key.get(ch)
-    #         if not key:
-    #             continue
-    #         sequence += key
-    #         node = node.setdefault(key, {})
-    #
-    #     # Only store the word at the FINAL node
-    #     node.setdefault("_", []).append(word)
-
+    # TRIE (for easier search)
     def _insert_word(self, word):
         node = self.trie
 
@@ -95,28 +65,21 @@ class T9Dictionary:
             self._insert_word(word.lower())
 
         # Sort all word lists after building
+        # sorting so shortest appear first
+        # i do it here so i dont have to do it while searching
         self._sort_trie(self.trie)
+
 
     def _sort_trie(self, node):
         if "_" in node:
             node["_"].sort(key=lambda w: (len(w), w))
 
+        # something smart that I probably need to remember but won't anyways
         for key, child in node.items():
             if key != "_":
                 self._sort_trie(child)
 
-    # ---------- API ----------
-
-    # def get_suggestions(self, sequence, limit=5):
-    #     node = self.trie
-    #
-    #     for digit in sequence:
-    #         node = node.get(digit)
-    #         if not node:
-    #             return []
-    #
-    #     return node.get("_", [])[:limit]
-
+    # +++++++++++++++++++++++++++++API = INTERFACE
     def get_suggestions(self, sequence, limit=5):
         node = self.trie
 
@@ -125,7 +88,6 @@ class T9Dictionary:
             if not node:
                 return []
 
-        # Collect all words from this node and descendants
         results = []
         self._collect_words(node, results)
         return results[:limit]

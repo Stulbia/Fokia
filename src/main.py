@@ -5,6 +5,7 @@ from datetime import datetime
 
 from apps.sms import SMSApp
 from apps.calculator import CalculatorApp
+from src.apps.foki import FokiApp
 from src.apps.inbox import InboxApp
 from src.apps.snake import SnakeApp
 
@@ -16,6 +17,7 @@ class Fokia3310App:
         self._init_state()
         self._build_ui()
         self.show_home()
+        self.visible_menu_items = 3
 
     # page settingg
     def _setup_page(self):
@@ -31,18 +33,25 @@ class Fokia3310App:
         self.apps = {
             "SMS": SMSApp(self),
             "Calculator": CalculatorApp(self),
-            "Inbox":InboxApp(self),
+            "Inbox": InboxApp(self),
+            "Seals": FokiApp(self),
             "Game": SnakeApp(self),
         }
         self.current_app = None
         self.current_screen = "home"
         self.selected_menu_index = 0
-        self.menu_options = ["SMS", "Calculator", "Inbox", "Game"]
+        self.menu_options = ["SMS", "Calculator", "Inbox", "Seals", "Game"]
+
+        #  display area (_build_ui)
+        self.display_width = 160
+        self.display_height = 136  # 160 - 12*2 (padding)
 
         self.display_area = ft.Container(
             expand=True,
             alignment=ft.Alignment(0, 0),
         )
+
+        self.menu_scroll_ref = None
 
     def _build_ui(self):
         phone_body = ft.Container(
@@ -57,7 +66,7 @@ class Fokia3310App:
                             size=16,
                             text_align=ft.TextAlign.CENTER,
                         ),
-                        padding=ft.padding.only(top=5, bottom=8),
+                        padding=ft.Padding.only(top=5, bottom=8),
                     ),
 
                     # Display screen
@@ -66,7 +75,7 @@ class Fokia3310App:
                         padding=12,
                         bgcolor="#a4b494",
                         border_radius=8,
-                        border=ft.border.all(6, "#1a1a1a"),
+                        border=ft.Border.all(6, "#1a1a1a"),
                         height=160,
                         shadow=ft.BoxShadow(
                             spread_radius=0,
@@ -275,8 +284,6 @@ class Fokia3310App:
             spacing=6,
         )
 
-
-
     def show_home(self):
 
         self.current_screen = "home"
@@ -293,9 +300,6 @@ class Fokia3310App:
         else:
             percent = "N/A"
             status = "No battery detected"
-
-
-
 
         self.display_area.content = ft.Column(
             controls=[
@@ -334,62 +338,87 @@ class Fokia3310App:
         )
         self.page.update()
 
-
     def show_menu(self):
         self.current_screen = "menu"
         self.current_app = None
 
+        total = len(self.menu_options)
+        start = self.selected_menu_index
+        end = start + self.visible_menu_items
+
+        # Wrap-around slicing (circular list)
+        visible_items = [
+            self.menu_options[i % total] for i in range(start, end)
+        ]
+
         items = []
-        for i, opt in enumerate(self.menu_options):
-            selected = i == self.selected_menu_index
+        for i, opt in enumerate(visible_items):
             items.append(
                 ft.Container(
                     content=ft.Text(
-                        f"{'▶ ' if selected else '  '}{opt}",
-                        color="#2c3e50" if selected else "#4a5d6e",
-                        weight=ft.FontWeight.BOLD if selected else ft.FontWeight.NORMAL,
+                        f"▶ {opt}" if i == 0 else f"  {opt}",
+                        color="#2c3e50" if i == 0 else "#4a5d6e",
+                        weight=ft.FontWeight.BOLD if i == 0 else ft.FontWeight.NORMAL,
                         size=12,
                     ),
-                    bgcolor="#8a9b7a" if selected else None,
-                    padding=3,
+                    bgcolor="#8a9b7a" if i == 0 else None,
+                    padding=5,
                     border_radius=4,
+                    width=self.display_width - 20,
                 )
             )
 
-        self.display_area.content = ft.Column(
-            controls=[
-                ft.Text(
-                    "Menu",
-                    size=16,
-                    weight=ft.FontWeight.BOLD,
-                    color="#2c3e50",
-                    align=ft.Alignment.CENTER,
-                ),
-                ft.Container(height=0.5),
-                ft.Column(
-                    controls=items,
-                    spacing=3,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.START,
-            horizontal_alignment=ft.CrossAxisAlignment.START,
+        self.display_area.content = ft.Container(
+            width=self.display_width,
+            height=self.display_height,
+            content=ft.Column(
+                controls=[
+                    ft.Container(
+                        content=ft.Text(
+                            "Menu",
+                            size=14,
+                            weight=ft.FontWeight.BOLD,
+                            color="#2c3e50",
+                        ),
+                        height=25,
+                        alignment=ft.Alignment.CENTER,
+                    ),
+                    ft.Column(
+                        controls=items,
+                        spacing=4,
+                    ),
+                    ft.Container(
+                        content=ft.Text(
+                            "",
+                            size=8,
+                            color="#7f8c8d",
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        height=20,
+                        alignment=ft.Alignment.CENTER,
+                    ),
+                ],
+                spacing=8,
+                alignment=ft.MainAxisAlignment.START,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
         )
+
         self.page.update()
 
-    # def launch_app(self, name):
-    #     self.current_app = self.apps.get(name)
-    #     self.current_screen = "app"
-    #
-    #     if self.current_app:
-    #         self.display_area.content = self.current_app.build()
-    #     else:
-    #         self.display_area.content = ft.Text(
-    #             "App not found",
-    #             color="#e74c3c",
-    #             weight=ft.FontWeight.BOLD,
-    #         )
-    #
-    #     self.page.update()
+
+    def _scroll_to_selected(self):
+        # auto "scroll"
+        if self.menu_scroll_ref and len(self.menu_options) > 0:
+            # calc scroll
+            item_height = 30  # ~padding + text height
+            scroll_position = self.selected_menu_index * item_height
+
+            # Smooth scroll
+            self.menu_scroll_ref.scroll_to(
+                offset=scroll_position,
+                duration=200,
+            )
 
     def launch_app(self, name):
         self.current_app = self.apps.get(name)
@@ -397,8 +426,8 @@ class Fokia3310App:
 
         if self.current_app:
             self.display_area.content = self.current_app.build(
-                width=160,
-                height=136  # 160 - padding - header feeling
+                width=self.display_width,
+                height=self.display_height
             )
         else:
             self.display_area.content = ft.Text("App not found")
@@ -423,6 +452,7 @@ class Fokia3310App:
         if self.current_screen == "app" and self.current_app:
             self.current_app.on_call()
 
+
     def _handle_arrow(self, direction):
         if self.current_screen == "menu":
             if direction == "up":
@@ -430,8 +460,9 @@ class Fokia3310App:
             elif direction == "down":
                 self.selected_menu_index = (self.selected_menu_index + 1) % len(self.menu_options)
             self.show_menu()
+
         elif self.current_screen == "app" and self.current_app:
-            self.current_app.on_arrow(direction)
+             self.current_app.on_arrow(direction)
 
     def _handle_key(self, key):
         if self.current_screen == "app" and self.current_app:
@@ -443,4 +474,5 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.run(main)
+    # run instead of app - new syntax (2025)

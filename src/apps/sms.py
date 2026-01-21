@@ -70,9 +70,9 @@ class SMSApp(BaseApp):
                 ft.Container(height=5),
 
                 # HELP
-                ft.Text("0=spacja ↑↓=słowa", size=7, color="#000000"),
-                ft.Text("#=tryb ##=zapis", size=7, color="#000000"),
-                ft.Text("*=usuń CALL=zapis", size=7, color="#000000"),
+                ft.Text("0=space ↑↓=choose", size=7, color="#000000"),
+                ft.Text("#=mode ##=save", size=7, color="#000000"),
+                ft.Text("*=delete CALL=save", size=7, color="#000000"),
             ],
             spacing=2,
             horizontal_alignment=ft.CrossAxisAlignment.START,
@@ -126,7 +126,6 @@ class SMSApp(BaseApp):
         self.last_key_time = current_time
 
     def on_arrow(self, direction):
-        """Obsługa strzałek do nawigacji po podpowiedziach"""
         if self.mode != "t9" or not self.suggestions:
             return
 
@@ -135,18 +134,15 @@ class SMSApp(BaseApp):
         elif direction == "down":
             self.selected_suggestion = (self.selected_suggestion + 1) % len(self.suggestions)
         elif direction == "left":
-            # Cofnij o jeden klawisz w sekwencji
             if self.current_sequence:
                 self.current_sequence = self.current_sequence[:-1]
                 self._update_suggestions()
         elif direction == "right":
-            # Zaakceptuj słowo
             self._accept_word()
 
         self._update_display()
 
     def on_call(self):
-        """Zapisz wiadomość klawiszem CALL"""
         self._save_message()
 
     def _handle_t9_key(self, key):
@@ -181,14 +177,14 @@ class SMSApp(BaseApp):
             self.same_key_count = (self.same_key_count + 1) % len(chars)
             if self.text:
                 self.text = self.text[:-1]
-                # Usuwamy też ostatnią literę z bufora ABC
+                # delete last from abc buffer
                 self.current_abc_word = self.current_abc_word[:-1]
         else:
             self.same_key_count = 0
 
         char = chars[self.same_key_count]
         self.text += char
-        self.current_abc_word += char  # Zapamiętujemy wpisany znak
+        self.current_abc_word += char  # remember current char
         self._update_display()
 
     def _update_suggestions(self):
@@ -259,8 +255,8 @@ class SMSApp(BaseApp):
 
         try:
             with open(filename, "w", encoding="utf-8") as f:
-                f.write(f"Data: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Treść:\n{self.text}\n")
+                f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"Message:\n{self.text}\n")
 
             # aight
             self.message_text.value = f"Sent!"
@@ -277,10 +273,10 @@ class SMSApp(BaseApp):
 
     def _add_current_word_to_dictionary(self):
         word_to_add = self.current_abc_word.strip()
-        if len(word_to_add) > 1:  # Nie dodajemy pojedynczych liter
-            # Wywołujemy metodę Twojej klasy T9Dictionary
+        if len(word_to_add) > 1:  # Not adding single letters
+            # add word in repo
             self.dictionary.add_word(word_to_add)
-            # Opcjonalnie: wyświetl feedback użytkownikowi
-            print(f"Dodano do słownika: {word_to_add}")
+            # maybe tell them idunno
+            print(f"Word added to dictionary: {word_to_add}")
 
-        self.current_abc_word = ""  # Czyścimy bufor po dodaniu
+        self.current_abc_word = ""  # Clear buffer

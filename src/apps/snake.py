@@ -1,25 +1,24 @@
 import flet as ft
 import flet.canvas as cv
 import random
-import time
-from apps.base_app import BaseApp
+import asyncio
+from src.apps.base_app import BaseApp
 
 
 class SnakeApp(BaseApp):
     def __init__(self, phone):
         super().__init__(phone)
-
-        self.grid_size = 20
-        self.cell_size = 5
+        self.grid_size = 12
+        self.cell_size = 8
         self.canvas_size = self.grid_size * self.cell_size
-
         self.running = False
+        self.game_speed = 0.5 # Seconds Per Frame
+        self.pending_update = False
         self.reset_game()
 
-    # ---------------- GAME STATE ----------------
-
     def reset_game(self):
-        self.snake = [[7, 7], [7, 8], [7, 9]]
+        center = self.grid_size // 2
+        self.snake = [[center, center], [center, center + 1], [center, center + 2]]
         self.direction = "up"
         self.next_direction = "up"
         self.food = self._generate_food()
@@ -35,55 +34,19 @@ class SnakeApp(BaseApp):
             if food not in self.snake:
                 return food
 
-    # ---------------- UI ----------------
+    def build(self, width, height):
+        #Compability screen size
+        header_height = 20
+        footer_height = 20
+        spacing_total = 10
+        canvas_available = height - header_height - footer_height - spacing_total
 
-    # def build(self, width, height):
-    #     self.score_text = ft.Text("Score: 0", size=16, weight=ft.FontWeight.BOLD)
-    #     self.status_text = ft.Text("CALL=start", size=12, color="#95a5a6")
-    #
-    #     self.canvas = cv.Canvas(
-    #         width=self.canvas_size,
-    #         height=self.canvas_size,
-    #         shapes=[]
-    #     )
-    #
-    #     self.game_container = ft.Container(
-    #         width=self.canvas_size,
-    #         height=self.canvas_size,
-    #         bgcolor="#2c3e50",
-    #         border_radius=6,
-    #         alignment=ft.Alignment.CENTER,
-    #         content=self.canvas,
-    #     )
-    #
-    #     layout = ft.Column(
-    #         [
-    #             ft.Text("SNAKE", size=20, weight=ft.FontWeight.BOLD),
-    #             self.score_text,
-    #             self.game_container,
-    #             self.status_text,
-    #         ],
-    #         alignment=ft.MainAxisAlignment.CENTER,
-    #         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-    #         spacing=5,
-    #     )
-    #
-    #     self._draw_canvas()
-    #     return layout
-    #
-    # # ---------------- DRAW ----------------
-
-    def build(self, width=160, height=136):
-        self.available_width = width
-        self.available_height = height
-
-        # dynamiczne dopasowanie
-        self.grid_size = 10
-        self.cell_size = min(
-            width // self.grid_size,
-            height // self.grid_size
+        # Grid adjustments
+        max_cell_size = min(
+            (width - 10) // self.grid_size,
+            canvas_available // self.grid_size
         )
-
+        self.cell_size = max(6, min(max_cell_size, 10))
         self.canvas_size = self.grid_size * self.cell_size
 
         self.canvas = cv.Canvas(
@@ -94,33 +57,51 @@ class SnakeApp(BaseApp):
 
         self.score_text = ft.Text(
             f"Score: {self.score}",
-            size=10,
+            size=11,
             weight=ft.FontWeight.BOLD,
             color="#2c3e50",
         )
 
         self.status_text = ft.Text(
-            "CALL=start",
-            size=9,
-            color="#4a5d6e",
+            "CALL = start",
+            size=8,
+            color="#7f8c8d",
         )
 
-        layout = ft.Column(
-            [
-                self.score_text,
-                ft.Container(
-                    width=self.canvas_size,
-                    height=self.canvas_size,
-                    content=self.canvas,
-                    bgcolor="#2c3e50",
-                    border_radius=4,
-                    alignment=ft.Alignment.CENTER,
-                ),
-                self.status_text,
-            ],
-            spacing=4,
-            alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        layout = ft.Container(
+            width=width,
+            height=height,
+            content=ft.Column(
+                controls=[
+                    # Header
+                    ft.Container(
+                        content=self.score_text,
+                        height=header_height,
+                        alignment=ft.Alignment.CENTER,
+                    ),
+
+                    # Game canvas
+                    ft.Container(
+                        width=self.canvas_size,
+                        height=self.canvas_size,
+                        content=self.canvas,
+                        bgcolor="#a4b494",
+                        border_radius=4,
+                        alignment=ft.Alignment.CENTER,
+                        border=ft.border.all(1, "#1a1a1a"),
+                    ),
+
+                    # Footer
+                    ft.Container(
+                        content=self.status_text,
+                        height=footer_height,
+                        alignment=ft.Alignment.CENTER,
+                    ),
+                ],
+                spacing=5,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
         )
 
         self._draw_canvas()
@@ -129,28 +110,31 @@ class SnakeApp(BaseApp):
     def _draw_canvas(self):
         shapes = []
 
-        # food
+        # Apples
+        food_margin = 1
         shapes.append(
             cv.Rect(
-                x=self.food[0] * self.cell_size,
-                y=self.food[1] * self.cell_size,
-                width=self.cell_size - 1,
-                height=self.cell_size - 1,
-                paint=ft.Paint(color="#e74c3c"),
-                border_radius=3,
+                x=self.food[0] * self.cell_size + food_margin,
+                y=self.food[1] * self.cell_size + food_margin,
+                width=self.cell_size - food_margin * 2,
+                height=self.cell_size - food_margin * 2,
+                paint=ft.Paint(color="#3b3d39"),
+                border_radius=self.cell_size // 3,
             )
         )
 
-        # snake
+        # Snake - head and body
+        snake_margin = 1
         for i, seg in enumerate(self.snake):
+            is_head = i == 0
             shapes.append(
                 cv.Rect(
-                    x=seg[0] * self.cell_size,
-                    y=seg[1] * self.cell_size,
-                    width=self.cell_size - 1,
-                    height=self.cell_size - 1,
+                    x=seg[0] * self.cell_size + snake_margin,
+                    y=seg[1] * self.cell_size + snake_margin,
+                    width=self.cell_size - snake_margin * 2,
+                    height=self.cell_size - snake_margin * 2,
                     paint=ft.Paint(
-                        color="#2ecc71" if i == 0 else "#27ae60"
+                        color="000000" if is_head else "#2e2e2e"
                     ),
                     border_radius=2,
                 )
@@ -158,24 +142,28 @@ class SnakeApp(BaseApp):
 
         self.canvas.shapes = shapes
 
-    # ---------------- GAME LOOP ----------------
-
     async def game_loop(self):
         while self.running and not self.game_over:
             self._move_snake()
             self._draw_canvas()
 
+            # Batch update (once per tick)
             self.score_text.value = f"Score: {self.score}"
-            self.phone.page.update()
 
-            # await ft.sleep(0.15)
+            try:
+                self.phone.page.update()
+            except:
+                break
 
+            await asyncio.sleep(self.game_speed)
 
         if self.game_over:
-            self.status_text.value = "GAME OVER! CALL=restart"
-            self.phone.page.update()
-
-    # ---------------- LOGIC ----------------
+            self.status_text.value = "END!  CALL = restart"
+            self.running = False
+            try:
+                self.phone.page.update()
+            except:
+                pass
 
     def _move_snake(self):
         self.direction = self.next_direction
@@ -190,13 +178,13 @@ class SnakeApp(BaseApp):
         elif self.direction == "right":
             head[0] += 1
 
-        # collision
+        # handle Collisions
         if (
-            head[0] < 0
-            or head[0] >= self.grid_size
-            or head[1] < 0
-            or head[1] >= self.grid_size
-            or head in self.snake
+                head[0] < 0
+                or head[0] >= self.grid_size
+                or head[1] < 0
+                or head[1] >= self.grid_size
+                or head in self.snake
         ):
             self.game_over = True
             self.running = False
@@ -204,15 +192,18 @@ class SnakeApp(BaseApp):
 
         self.snake.insert(0, head)
 
+        # Eating
         if head == self.food:
             self.score += 10
             self.food = self._generate_food()
+            # I AM SPEED
+            if self.game_speed > 0.08:
+                self.game_speed *= 0.98
         else:
             self.snake.pop()
 
-    # ---------------- INPUT ----------------
-
     def on_arrow(self, direction):
+        # no 180 degrees
         if direction == "up" and self.direction != "down":
             self.next_direction = "up"
         elif direction == "down" and self.direction != "up":
@@ -227,9 +218,14 @@ class SnakeApp(BaseApp):
             return
 
         self.reset_game()
+        self.game_speed = 0.5  # Reset speed
         self.running = True
-        self.status_text.value = ""
-        self.phone.page.run_task(self.game_loop)
+        self.status_text.value = "↑↓←→"
+        self._draw_canvas()
+        self.phone.page.update()
+
+        # Use run_task from asyncio
+        asyncio.create_task(self.game_loop())
 
     def on_back(self):
         self.running = False

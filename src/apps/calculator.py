@@ -1,6 +1,7 @@
 import flet as ft
-from apps.base_app import BaseApp
+from src.apps.base_app import BaseApp
 
+#simple calculator because I want some filler apps and it's easy to make
 
 class CalculatorApp(BaseApp):
     def __init__(self, phone):
@@ -9,49 +10,80 @@ class CalculatorApp(BaseApp):
         self.result = ""
         self.display = None
 
-    def build(self):
+    def build(self, width, height):
+        # Wyliczamy wysokości
+        header_height = 25
+        expr_height = 30
+        result_height = 20
+        footer_height = 30
+        spacing_total = 20
+
         self.display = ft.Container(
-            alignment=ft.alignment.Alignment.CENTER,
+            width=width,
+            height=height,
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        "CALCULATOR",
-                        weight=ft.FontWeight.BOLD,
-                        size=14,
-                        color="#2c3e50",
+                    # Header
+                    ft.Container(
+                        content=ft.Text(
+                            "KALKULATOR",
+                            weight=ft.FontWeight.BOLD,
+                            size=12,
+                            color="#2c3e50",
+                        ),
+                        height=header_height,
                     ),
-                    ft.Container(height=8),
-                    ft.Text(
-                        self.expr if self.expr else "0",
-                        size=16,
-                        color="#2c3e50",
-                        weight=ft.FontWeight.W_500,
+
+                    # Expression display
+                    ft.Container(
+                        content=ft.Text(
+                            self.expr if self.expr else "0",
+                            size=14,
+                            color="#2c3e50",
+                            weight=ft.FontWeight.W_500,
+                        ),
+                        height=expr_height,
+                        alignment=ft.Alignment.CENTER,
                     ),
+
+                    # Result display
                     ft.Container(
                         content=ft.Text(
                             self.result,
-                            size=12,
+                            size=11,
                             color="#7f8c8d",
                             italic=True,
                         ),
-                        height=20,
+                        height=result_height,
+                        alignment=ft.Alignment.CENTER,
                     ),
-                    ft.Container(height=4),
-                    ft.Text(
-                        "CALL = result | * = clear",
-                        size=8,
-                        color="black",
-                    ),
-                    ft.Text(
-                        "↑(+) ↓(-) ←(/) →(*)",
-                        size=10,
-                        weight=ft.FontWeight.BOLD,
-                        color="#34495e",
+
+                    # Footer instructions
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Text(
+                                    "↑(+) ↓(-) ←(/) →(*)",
+                                    size=8,
+                                    color="#7f8c8d",
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                                ft.Text(
+                                    "CALL=solution; #=delete; *=clear",
+                                    size=8,
+                                    color="#7f8c8d",
+                                    text_align=ft.TextAlign.CENTER,
+                                ),
+                            ],
+                            spacing=2,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        height=footer_height,
                     ),
                 ],
-                spacing=2,
+                spacing=5,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            )
+            ),
         )
         return self.display
 
@@ -72,7 +104,6 @@ class CalculatorApp(BaseApp):
         self._update_display()
 
     def on_arrow(self, arrow):
-        # Map arrows to math operators
         mapping = {
             "up": "+",
             "down": "-",
@@ -81,7 +112,6 @@ class CalculatorApp(BaseApp):
         }
 
         if arrow in mapping:
-            # Prevent starting with an operator or doubling them
             if self.expr and self.expr[-1] not in "+-*/":
                 self.expr += mapping[arrow]
                 self.result = ""
@@ -90,7 +120,6 @@ class CalculatorApp(BaseApp):
     def on_call(self):
         if self.expr:
             try:
-                # Use a safe evaluation context if needed, here keeping it simple
                 result = eval(self.expr)
                 if isinstance(result, float):
                     result_str = f"{result:.6f}".rstrip('0').rstrip('.')
@@ -100,16 +129,15 @@ class CalculatorApp(BaseApp):
                 self.result = f"= {result_str}"
                 self.expr = result_str
             except Exception:
-                self.result = "ERROR"
+                self.result = "BŁĄD"
 
         self._update_display()
 
     def _update_display(self):
         if self.display:
-            # Column is inside the Container
             column = self.display.content
-            column.controls[2].value = self.expr if self.expr else "0"
-            column.controls[3].content.value = self.result
+            column.controls[1].content.value = self.expr if self.expr else "0"
+            column.controls[2].content.value = self.result
             self.phone.page.update()
 
     def on_back(self):
